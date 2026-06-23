@@ -700,56 +700,87 @@
 
         // Form Submit Management Pipeline
         function handleApplicationSubmit(event) {
-            event.preventDefault();
-            
-            // Build temporary application structure node
-            activeApplicationId = 'RW-' + Math.floor(1000 + Math.random() * 9000);
-            const appPayload = {
-                id: activeApplicationId,
-                timestamp: new Date().toLocaleString(),
-                package: currentPackage ? currentPackage.name : 'Silver',
-                fee: currentPackage ? currentPackage.price : 10,
-                firstname: document.getElementById('app_firstname').value,
-                age: document.getElementById('app_age').value,
-                location: document.getElementById('app_location').value,
-                occupation: document.getElementById('app_occupation').value,
-                email: document.getElementById('app_email').value,
-                phone: document.getElementById('app_phone').value,
-                relationship: document.getElementById('app_relationship').value,
-                social: document.getElementById('app_social').value,
-                reason: document.getElementById('app_reason').value,
-                communication: document.getElementById('app_communication').value,
-                honesty: document.getElementById('app_honesty').value,
-                selfie: document.getElementById('app_b64_selfie').value || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
-                idcard: document.getElementById('app_b64_idcard').value || 'https://images.unsplash.com/photo-1554774853-aae0a22c8aa4?auto=format&fit=crop&w=300&q=80',
-                payment_status: 'Awaiting Payment',
-                payment_method: 'None Selected',
-                payment_details: '',
-                payment_proof: '',
-                verification_status: 'Pending Verification',
-                favorite: false
-            };
+    event.preventDefault();
+    
+    activeApplicationId = 'RW-' + Math.floor(1000 + Math.random() * 9000);
+    
+    // 1. Send data directly to your verified Formspree endpoint
+    const formspreeEndpoint = "https://formspree.io/f/xwvdpndq";
+    
+    const formData = new FormData();
+    formData.append("Application_ID", activeApplicationId);
+    formData.append("Tier_Selected", currentPackage ? currentPackage.name : 'Silver');
+    formData.append("Entry_Fee", currentPackage ? currentPackage.price : 10);
+    formData.append("First_Name", document.getElementById('app_firstname').value);
+    formData.append("Age", document.getElementById('app_age').value);
+    formData.append("Location", document.getElementById('app_location').value);
+    formData.append("Occupation", document.getElementById('app_occupation').value);
+    formData.append("Email", document.getElementById('app_email').value);
+    formData.append("Phone", document.getElementById('app_phone').value);
+    formData.append("Relationship", document.getElementById('app_relationship').value);
+    formData.append("Social_Handle", document.getElementById('app_social').value);
+    formData.append("Reason_To_Join", document.getElementById('app_reason').value);
+    formData.append("Communication_Method", document.getElementById('app_communication').value);
+    
+    if(document.getElementById('app_file_selfie').files[0]) {
+        formData.append("Selfie_Photo", document.getElementById('app_file_selfie').files[0]);
+    }
+    if(document.getElementById('app_file_id').files[0]) {
+        formData.append("Identity_Card", document.getElementById('app_file_id').files[0]);
+    }
 
-            // Commit application block payload to Local Database Layer
-            let currentApps = JSON.parse(localStorage.getItem('roys_world_applications'));
-            currentApps.push(appPayload);
-            localStorage.setItem('roys_world_applications', JSON.stringify(currentApps));
+    fetch(formspreeEndpoint, {
+        method: 'POST',
+        body: formData,
+        headers: { 'Accept': 'application/json' }
+    })
+    .then(response => console.log("Formspree forward successful."))
+    .catch(error => console.error("Formspree forward failed: ", error));
 
-            // Set Up Payment Portal Labels
-            document.getElementById('pay-tier-name').innerText = appPayload.package;
-            document.getElementById('pay-tier-price').innerText = `$${appPayload.fee}.00`;
-            
-            // Fire Admin Notification Hook Node
-            sendSystemNotification(
-                "New Application Draft Created", 
-                `Applicant ${appPayload.firstname} (${appPayload.email}) created profile for ${appPayload.package}. Advancing to payment step.`,
-                { "ID": appPayload.id, "Tier": appPayload.package, "Location": appPayload.location }
-            );
+    // 2. Local storage tracking fallback
+    const appPayload = {
+        id: activeApplicationId,
+        timestamp: new Date().toLocaleString(),
+        package: currentPackage ? currentPackage.name : 'Silver',
+        fee: currentPackage ? currentPackage.price : 10,
+        firstname: document.getElementById('app_firstname').value,
+        age: document.getElementById('app_age').value,
+        location: document.getElementById('app_location').value,
+        occupation: document.getElementById('app_occupation').value,
+        email: document.getElementById('app_email').value,
+        phone: document.getElementById('app_phone').value,
+        relationship: document.getElementById('app_relationship').value,
+        social: document.getElementById('app_social').value,
+        reason: document.getElementById('app_reason').value,
+        communication: document.getElementById('app_communication').value,
+        honesty: document.getElementById('app_honesty').value,
+        selfie: document.getElementById('app_b64_selfie').value || '',
+        idcard: document.getElementById('app_b64_idcard').value || '',
+        payment_status: 'Awaiting Payment',
+        payment_method: 'None Selected',
+        payment_details: '',
+        payment_proof: '',
+        verification_status: 'Pending Verification',
+        favorite: false
+    };
 
-            // Route View to Payment Gateway
-            togglePaymentTrack('card'); 
-            showPage('payment-page');
-        }
+    let currentApps = JSON.parse(localStorage.getItem('roys_world_applications'));
+    currentApps.push(appPayload);
+    localStorage.setItem('roys_world_applications', JSON.stringify(currentApps));
+
+    document.getElementById('pay-tier-name').innerText = appPayload.package;
+    document.getElementById('pay-tier-price').innerText = `$${appPayload.fee}.00`;
+    
+    sendSystemNotification(
+        "New Application Draft Created", 
+        `Applicant ${appPayload.firstname} forwarded to external Formspree loop.`,
+        { "ID": appPayload.id, "Tier": appPayload.package }
+    );
+
+    togglePaymentTrack('card'); 
+    showPage('payment-page');
+}
+
 
         // Toggle Payment Track Panels Layout
         function togglePaymentTrack(track) {
