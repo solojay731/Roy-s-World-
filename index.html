@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roy's World — Private Luxury Membership</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- FontAwesome Icons for Luxury Styling -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Premium Serif Font (Playfair Display) & Sans Font (Inter) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #050505;
+            color: #E5E5E5;
+        }
+        .serif-title {
+            font-family: 'Playfair Display', serif;
+        }
+        /* Custom Premium Gold Palette & Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #050505;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #D4AF37;
+            border-radius: 3px;
+        }
+        .gold-gradient-text {
+            background: linear-gradient(135deg, #F3E5AB 0%, #D4AF37 50%, #AA7C11 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .gold-border {
+            border-image: linear-gradient(to right, #AA7C11, #D4AF37, #F3E5AB) 1;
+        }
+        .glass-card {
+            background: rgba(13, 13, 13, 0.85);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(212, 175, 55, 0.15);
+        }
+    </style>
+</head>
+<body class="antialiased overflow-x-hidden">
+
+    <!-- SETUP APPLICATION STATE ENGINE (LOCAL STORAGE DATABASE SCHEMA) -->
+    <script>
+        // Default Configuration Setup
+        if (!localStorage.getItem('roys_world_wallets')) {
+            const defaultWallets = [
+                { id: 'btc', name: 'Bitcoin (BTC)', address: '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa', enabled: true },
+                { id: 'eth', name: 'Ethereum (ETH)', address: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e', enabled: true },
+                { id: 'usdt_erc20', name: 'USDT (ERC20)', address: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e', enabled: true },
+                { id: 'usdt_trc20', name: 'USDT (TRC20)', address: 'TXB7GfXW6N3VsbM8qN4b9D7bdfg7asE6fd', enabled: true }
+            ];
+            localStorage.setItem('roys_world_wallets', JSON.stringify(defaultWallets));
+        }
+        if (!localStorage.getItem('roys_world_admin_email')) {
+            localStorage.setItem('roys_world_admin_email', 'admin@roysworldofficial.com');
+        }
+        if (!localStorage.getItem('roys_world_webhook')) {
+            localStorage.setItem('roys_world_webhook', '');
+        }
+        if (!localStorage.getItem('roys_world_applications')) {
+            localStorage.setItem('roys_world_applications', JSON.stringify([]));
+        }
+
+        // Global State Store
+        let currentPackage = null;
+        let activeApplicationId = null;
+
+        // Shared Utility: Fire Real-time Webhook Notification Node
+        function sendSystemNotification(title, message, payload = {}) {
+            const webhookUrl = localStorage.getItem('roys_world_webhook');
+            const adminEmail = localStorage.getItem('roys_world_admin_email');
+            console.log(`[EMAIL DISPATCH TO ${adminEmail}]: ${title} - ${message}`, payload);
+            
+            if (webhookUrl) {
+                fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        content: `⚜️ **Roy's World System Update** ⚜️\n**Event:** ${title}\n**Details:** ${message}\n**Target Config Email:** ${adminEmail}`,
+                        embeds: [{
+                            title: title,
+                            description: message,
+                            color: 13936951,
+                            fields: Object.keys(payload).map(k => ({ name: k, value: String(payload[k]), inline: true }))
+                        }]
+                    })
+                }).catch(err => console.error("Webhook trace failed: ", err));
+            }
+        }
+    </script>
+
+    <!-- TOP NAVIGATION -->
+    <header class="w-full py-5 px-6 border-b border-zinc-900 bg-[#050505] sticky top-0 z-40 flex justify-between items-center">
+        <div class="flex items-center space-x-3 cursor-pointer" onclick="showPage('homepage')">
+            <div class="w-9 h-9 border border-[#D4AF37] flex items-center justify-center rounded-sm">
+                <span class="serif-title font-bold text-[#D4AF37] tracking-widest text-sm">RW</span>
+            </div>
+            <span class="serif-title font-semibold uppercase tracking-widest text-[#E5E5E5] text-base">Roy's World</span>
+        </div>
+        <nav class="hidden md:flex space-x-8 text-xs tracking-widest uppercase text-zinc-400">
+            <a href="#" onclick="showPage('homepage')" class="hover:text-[#D4AF37] transition">Home</a>
+            <a href="#" onclick="showPage('packages-page')" class="hover:text-[#D4AF37] transition">Memberships</a>
+            <a href="#" onclick="showPage('admin-login-page')" class="hover:text-[#D4AF37] transition"><i class="fa-solid fa-lock mr-1"></i> Executive Portal</a>
+        </nav>
+        <div>
+            <button onclick="showPage('packages-page')" class="border border-[#D4AF37] px-4 py-2 text-[10px] tracking-widest uppercase text-[#D4AF37] hover:bg-[#D4AF37] hover:text-black transition duration-300">
+                Apply Now
+            </button>
+            <button onclick="showPage('admin-login-page')" class="md:hidden ml-2 inline-block border border-zinc-800 text-zinc-400 p-2 text-xs">
+                <i class="fa-solid fa-lock"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- PAGE 1: HOMEPAGE -->
+    <div id="homepage" class="page-view space-y-24 pb-20">
+        <!-- Hero Section -->
+        <section class="relative min-h-[85vh] flex flex-col justify-center items-center text-center px-4 bg-cover bg-center" style="background-image: linear-gradient(to bottom, rgba(5,5,5,0.4), #050505), url('https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&q=80&w=1600');">
+            <div class="max-w-3xl space-y-6 z-10">
+                <p class="text-xs uppercase tracking-[0.4em] text-[#D4AF37] font-medium">An International Hegemony of Distinction</p>
+                <h1 class="serif-title text-4xl sm:text-6xl text-white font-medium leading-tight">Welcome to the Inner sanctum of <br><span class="gold-gradient-text italic font-bold">Roy's World</span></h1>
+                <div class="w-16 h-[1px] bg-[#D4AF37] mx-auto my-6"></div>
+                
+                <!-- Concierge Greeting Panel -->
+                <div class="glass-card max-w-xl mx-auto p-6 rounded-sm border border-zinc-800">
+                    <p class="text-zinc-300 italic text-sm font-light leading-relaxed">
+                        "Hello, I'm Daddy Ben. Sign up using the registration form to apply for membership and join my exclusive circle."
+                    </p>
+                </div>
+
+                <div class="pt-6">
+                    <button onclick="showPage('packages-page')" class="bg-gradient-to-r from-[#AA7C11] via-[#D4AF37] to-[#F3E5AB] text-black text-xs font-semibold uppercase tracking-[0.2em] px-8 py-4 shadow-xl hover:opacity-90 transition duration-300 w-full sm:w-auto">
+                        Apply Now
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Benefits Section -->
+        <section class="max-w-6xl mx-auto px-6">
+            <div class="text-center space-y-2 mb-16">
+                <h2 class="serif-title text-3xl text-white">Privileges of Membership</h2>
+                <p class="text-xs uppercase tracking-widest text-[#D4AF37]">The Return of Sovereign Access</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="bg-[#0D0D0D] p-8 border border-zinc-900 rounded-sm space-y-4">
+                    <div class="text-[#D4AF37] text-2xl"><i class="fa-solid fa-gem"></i></div>
+                    <h3 class="serif-title text-lg text-white">Initial Allocations</h3>
+                    <p class="text-zinc-400 text-xs leading-relaxed">Approved members receive immediate executive financial baseline configurations optimized dynamically across private ledger tiers upon verification activation.</p>
+                </div>
+                <div class="bg-[#0D0D0D] p-8 border border-zinc-900 rounded-sm space-y-4">
+                    <div class="text-[#D4AF37] text-2xl"><i class="fa-solid fa-crown"></i></div>
+                    <h3 class="serif-title text-lg text-white">Weekly Endowments</h3>
+                    <p class="text-zinc-400 text-xs leading-relaxed">Continuous ongoing baseline weekly returns designed exclusively to maintain fluid lifestyle standards matching our international society profile thresholds.</p>
+                </div>
+                <div class="bg-[#0D0D0D] p-8 border border-zinc-900 rounded-sm space-y-4">
+                    <div class="text-[#D4AF37] text-2xl"><i class="fa-solid fa-fingerprint"></i></div>
+                    <h3 class="serif-title text-lg text-white">Absolute Privacy</h3>
+                    <p class="text-zinc-400 text-xs leading-relaxed">A specialized military-grade processing architecture handles metadata abstraction. Your credentials remain permanently encrypted away from public oversight portals.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Preview Section with CTA -->
+        <section class="max-w-4xl mx-auto px-6 text-center bg-gradient-to-b from-[#0D0D0D] to-[#050505] p-12 border border-zinc-900 rounded-sm">
+            <h2 class="serif-title text-2xl text-white mb-4">Are you ready to transcend standard boundaries?</h2>
+            <p class="text-zinc-400 text-xs max-w-xl mx-auto mb-8 leading-relaxed">Applications are carefully screened by executive administrators. Only accurate and legitimate data profiles will be presented to Daddy Ben for consideration.</p>
+            <button onclick="showPage('packages-page')" class="border border-[#D4AF37] px-8 py-3 text-xs tracking-widest uppercase text-[#D4AF37] hover:bg-[#D4AF37] hover:text-black transition duration-300">
+                Review Tier Packages
+            </button>
+        </section>
+
+        <!-- FAQ Preview -->
+        <section class="max-w-3xl mx-auto px-6">
+            <h2 class="serif-title text-xl text-center text-white mb-8">Frequently Enquired Inquiries</h2>
+            <div class="space-y-4">
+                <div class="p-4 bg-[#0D0D0D] rounded-sm border border-zinc-900">
+                    <h4 class="text-xs uppercase tracking-wider text-[#D4AF37] font-semibold mb-1">What happens after registration fee processing?</h4>
+                    <p class="text-zinc-400 text-xs leading-relaxed">Your profile immediately locks into status "Pending Verification". The senior dashboard operations team checks the matching selfie and government documentation against international AML metrics.</p>
+                </div>
+                <div class="p-4 bg-[#0D0D0D] rounded-sm border border-zinc-900">
+                    <h4 class="text-xs uppercase tracking-wider text-[#D4AF37] font-semibold mb-1">How are weekly benefits paid?</h4>
+                    <p class="text-zinc-400 text-xs leading-relaxed">Upon approval by Daddy Ben, your configuration interface updates to facilitate custom localized automated transfers or preferred cryptographic distributions.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Privacy Footer Node -->
+        <footer class="max-w-6xl mx-auto px-6 pt-12 border-t border-zinc-900 text-center text-[11px] text-zinc-600 space-y-2">
+            <p>&copy; 2026 Roy's World Ecosystem. All Sovereignty Reserved.</p>
+            <p class="max-w-xl mx-auto">This portal uses strict private verification metrics. All transactions are completely sovereign, final, and protected by private member agreements.</p>
+        </footer>
+    </div>
+
+
+    <!-- PAGE 2: MEMBERSHIP PACKAGES PAGE -->
+    <div id="packages-page" class="page-view hidden max-w-6xl mx-auto px-6 py-12">
+        <div class="text-center space-y-2 mb-12">
+            <span class="text-xs uppercase tracking-[0.3em] text-[#D4AF37]">Available Tiers</span>
+            <h2 class="serif-title text-3xl text-white font-medium">Select Your Entry Privilege</h2>
+            <div class="w-12 h-[1px] bg-[#D4AF37] mx-auto mt-4"></div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <!-- SILVER CARD -->
+            <div class="bg-[#0D0D0D] border border-zinc-800 rounded-sm p-6 flex flex-col justify-between transform hover:-translate-y-2 transition duration-300 relative group">
+                <div class="absolute inset-x-0 top-0 h-[2px] bg-zinc-500 opacity-50"></div>
+                <div class="space-y-4">
+                    <div class="flex justify-between items-start">
+                        <span class="text-xs tracking-widest text-zinc-400 uppercase font-medium">Silver Tier</span>
+                        <i class="fa-solid fa-award text-zinc-400"></i>
+                    </div>
+                    <div class="py-2">
+                        <span class="text-xs text-zinc-500 uppercase block tracking-wider">Registration Entry Fee</span>
+                        <span class="serif-title text-3xl text-white font-semibold">$10</span>
+                    </div>
+                    <div class="space-y-2 border-t border-zinc-900 pt-4 text-xs">
+                        <div class="flex justify-between"><span class="text-zinc-500">Initial Benefit:</span><span class="text-emerald-400 font-semibold">$1,000</span></div>
+                        <div class="flex justify-between"><span class="text-zinc-500">Weekly Return:</span><span class="text-zinc-300">$500 / week</span></div>
+                    </div>
+                </div>
+                <button onclick="selectMembership('Silver', 10)" class="mt-8 w-full py-3 bg-zinc-800 text-white hover:bg-[#D4AF37] hover:text-black transition text-[11px] tracking-widest uppercase font-semibold">Select Plan</button>
+            </div>
+
+            <!-- GOLD CARD -->
+            <div class="bg-[#0D0D0D] border border-[#AA7C11] rounded-sm p-6 flex flex-col justify-between transform hover:-translate-y-2 transition duration-300 relative">
+                <div class="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-[#AA7C11] to-[#D4AF37]"></div>
+                <span class="absolute top-2 right-2 text-[9px] bg-[#AA7C11] text-black px-2 py-0.5 uppercase tracking-widest font-bold">Popular</span>
+                <div class="space-y-4">
+                    <div class="flex justify-between items-start">
+                        <span class="text-xs tracking-widest text-[#D4AF37] uppercase font-medium">Gold Tier</span>
+                        <i class="fa-solid fa-crown text-[#D4AF37]"></i>
+                    </div>
+                    <div class="py-2">
+                        <span class="text-xs text-zinc-500 uppercase block tracking-wider">Registration Entry Fee</span>
+                        <span class="serif-title text-3xl text-[#D4AF37] font-semibold">$20</span>
+                    </div>
+                    <div class="space-y-2 border-t border-zinc-900 pt-4 text-xs">
+                        <div class="flex justify-between"><span class="text-zinc-500">Initial Benefit:</span><span class="text-emerald-400 font-semibold">$2,000</span></div>
+                        <div class="flex justify-between"><span class="text-zinc-500">Weekly Return:</span><span class="text-zinc-300">$1,000 / week</span></div>
+                    </div>
+                </div>
+                <button onclick="selectMembership('Gold', 20)" class="mt-8 w-full py-3 bg-gradient-to-r from-[#AA7C11] to-[#D4AF37] text-black transition text-[11px] tracking-widest uppercase font-semibold hover:opacity-90">Select Plan</button>
+            </div>
+
+            <!-- PLATINUM CARD -->
+            <div class="bg-[#0D0D0D] border border-zinc-800 rounded-sm p-6 flex flex-col justify-between transform hover:-translate-y-2 transition duration-300 relative">
+                <div class="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-[#D4AF37] to-[#F3E5AB]"></div>
+                <div class="space-y-4">
+                    <div class="flex justify-between items-start">
+                        <span class="text-xs tracking-widest text-zinc-300 uppercase font-medium">Platinum Tier</span>
+                        <i class="fa-solid fa-gem text-zinc-300"></i>
+                    </div>
+                    <div class="py-2">
+                        <span class="text-xs text-zinc-500 uppercase block tracking-wider">Registration Entry Fee</span>
+                        <span class="serif-title text-3xl text-white font-semibold">$30</span>
+                    </div>
+                    <div class="space-y-2 border-t border-zinc-900 pt-4 text-xs">
+                        <div class="flex justify-between"><span class="text-zinc-500">Initial Benefit:</span><span class="text-emerald-400 font-semibold">$3,000</span></div>
+                        <div class="flex justify-between"><span class="text-zinc-500">Weekly Return:</span><span class="text-zinc-300">$1,500 / week</span></div>
+                    </div>
+                </div>
+                <button onclick="selectMembership('Platinum', 30)" class="mt-8 w-full py-3 bg-zinc-800 text-white hover:bg-[#D4AF37] hover:text-black transition text-[11px] tracking-widest uppercase font-semibold">Select Plan</button>
+            </div>
+
+            <!-- LUXURY CARD -->
+            <div class="bg-black border-2 border-[#D4AF37] rounded-sm p-6 flex flex-col justify-between transform hover:-translate-y-2 transition duration-300 relative shadow-[0_0_20px_rgba(212,175,55,0.15)]">
+                <div class="space-y-4">
+                    <div class="flex justify-between items-start">
+                        <span class="text-xs tracking-widest gold-gradient-text uppercase font-bold">Luxury VIP</span>
+                        <i class="fa-solid fa-fingerprint text-[#D4AF37]"></i>
+                    </div>
+                    <div class="py-2">
+                        <span class="text-xs text-zinc-500 uppercase block tracking-wider">Registration Entry Fee</span>
+                        <span class="serif-title text-3xl text-[#D4AF37] font-semibold">$50</span>
+                    </div>
+                    <div class="space-y-2 border-t border-zinc-900 pt-4 text-xs">
+                        <div class="text-zinc-400 italic text-[11px] leading-relaxed">
+                            Bespoke custom arrangement. Core benefits and premium privileges are discussed in completely secure private channels directly following validation check.
+                        </div>
+                    </div>
+                </div>
+                <button onclick="selectMembership('Luxury VIP', 50)" class="mt-8 w-full py-3 bg-black border border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37] hover:text-black transition text-[11px] tracking-widest uppercase font-bold">Select Custom Plan</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- PAGE 3: APPLICATION FORM PAGE -->
+    <div id="application-page" class="page-view hidden max-w-2xl mx-auto px-6 py-12">
+        <div class="glass-card p-8 border border-zinc-800 rounded-sm space-y-6">
+            <div class="text-center space-y-1">
+                <span class="text-[10px] tracking-[0.3em] text-[#D4AF37] uppercase font-bold">Profile Provisioning</span>
+                <h2 class="serif-title text-2xl text-white">Private Circle Membership Form</h2>
+                <p class="text-zinc-500 text-xs">Selected Tier: <span id="display-selected-package" class="text-[#D4AF37] font-semibold">None</span></p>
+            </div>
+
+            <form id="membershipForm" onsubmit="handleApplicationSubmit(event)" class="space-y-5 text-xs">
+                <!-- Basic Personal Information -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-zinc-400 mb-1 tracking-wider uppercase text-[10px]">First Name</label>
+                        <input type="text" id="app_firstname" required class="w-full bg-[#050505] border border-zinc-800 p-3 rounded-sm text-white focus:outline-none focus:border-[#D4AF37]">
+                    </div>
+                    <div>
+                        <label class="block text-zinc-400 mb-1 tracking-wider uppercase text-[10px]">Age</label>
+                        <input type="number" id="app_age" required class="w-full bg-[#050505] border border-zinc-800 p-3 rounded-sm text-white focus:outline-none focus:border-[#D4AF37]">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-zinc-400 mb-1 tracking-wider uppercase text-[10px]">Location (City / Country)</label>
+                        <input type="text" id="app_location" required class="w-full bg-[#050505] border border-zinc-800 p-3 rounded-sm text-white focus:outline-none focus:border-[#D4AF37]">
+                    </div>
+                    <div>
+                        <label class="block text-zinc-400 mb-1 tracking-wider uppercase text-[10px]">Occupation / Profession</label>
+                        <input type="text" id="app_occupation" required class="w-full bg-[#050505] border border-zinc-800 p-3 rounded-sm text-white focus:outline-none focus:border-[#D4AF37]">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-zinc-400 mb-1 tracking-wider uppercase text-[10px]">Email Address</label>
+                        <input type="email" id="app_email" required class="w-full bg-[#050505] border border-zinc-800 p-3 rounded-sm text-white focus:outline-none focus:border-[#D4AF37]">
+                    </div>
+                    <div>
+                        <label class="block text-zinc-400 mb-1 tracking-wider uppercase text-[10px]">Phone Number</label>
+                        <input type="tel" id="app_phone" required class="w-full bg-[#050505] border border-zinc-800 p-3 rounded-sm text-white focus:outline-none focus:border-[#D4AF37]">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-zinc-400 mb-1 tracking-wider uppercase text-[10px]">Relationship Status</label>
+                        <select id="app_relationship" required class="w-full bg-[#050505] border border-zinc-800 p-3 rounded-sm text-zinc-300 focus:outline-none focus:border-[#D4AF37]">
+                            <option value="Single">Single</option>
+                            <option value="Married">Married</option>
+                            <option value="Divorced">Divorced</option>
+                            <option value="Widowed">Widowed</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-zinc-400 mb-1 tracking-wider uppercase text-[10px]">Social Media Accounts Handle</label>
+                        <input type="text" id="app_social" placeholder="e.g. Instagram/Twitter @handle" required class="w-full bg-[#050505] border border-zinc-800 p-3 rounded-sm text-white focus:outline-none focus:border-[#D4AF37]">
+                    </div>
+                </div>
+
+                <!-- Strategic Context Questions -->
+                <div>
+                    <label class="block text-zinc-400 mb-1 tracking-wider uppercase text-[10px]">Why do you want to become a member of Roy's World?</label>
+                    <textarea id="app_reason" rows="3" required class="w-full bg-[#050505] border border-zinc-800 p-3 rounded-sm text-white focus:outline-none focus:border-[#D4AF37]"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-zinc-400 mb-1 tracking-wider uppercase text-[10px]">Preferred Communication Method?</label>
+                    <select id="app_communication" class="w-full bg-[#050505] border border-zinc-800 p-3 rounded-sm text-zinc-300 focus:outline-none focus:border-[#D4AF37]">
+                        <option value="Secure Email">Secure Email</option>
+                        <option value="WhatsApp/Telegram">WhatsApp / Telegram Direct</option>
+                        <option value="Voice Call">Direct Voice Consultation</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-zinc-400 mb-1 tracking-wider uppercase text-[10px]">Will you remain honest and transparent after approval?</label>
+                    <select id="app_honesty" class="w-full bg-[#050505] border border-zinc-800 p-3 rounded-sm text-zinc-300 focus:outline-none focus:border-[#D4AF37]">
+                        <option value="Yes, completely">Yes, completely</option>
+                        <option value="I pledge transparent collaboration">I pledge transparent collaboration</option>
+                    </select>
+                </div>
+
+                <!-- Secure File Verification Node Uploads -->
+                <div class="border-t border-zinc-900 pt-4 space-y-4">
+                    <h3 class="text-[10px] tracking-wider uppercase text-[#D4AF37] font-semibold">KYC Verification Upload Architecture</h3>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="bg-black p-4 border border-zinc-900 text-center rounded-sm">
+                            <label class="block text-zinc-400 mb-2 uppercase text-[9px]">1. Selfie Photograph</label>
+                            <input type="file" id="app_file_selfie" accept="image/*" required onchange="processFileToBase64('selfie')" class="w-full text-zinc-500 text-[10px] file:mr-2 file:py-1 file:px-2 file:border file:border-zinc-800 file:bg-zinc-900 file:text-zinc-300">
+                            <input type="hidden" id="app_b64_selfie">
+                        </div>
+                        <div class="bg-black p-4 border border-zinc-900 text-center rounded-sm">
+                            <label class="block text-zinc-400 mb-2 uppercase text-[9px]">2. Government Issued ID Card</label>
+                            <input type="file" id="app_file_id" accept="image/*" required onchange="processFileToBase64('idcard')" class="w-full text-zinc-500 text-[10px] file:mr-2 file:py-1 file:px-2 file:border file:border-zinc-800 file:bg-zinc-900 file:text-zinc-300">
+                            <input type="hidden" id="app_b64_idcard">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Regulatory Mandates -->
+                <div class="space-y-2 pt-2 bg-zinc-950 p-4 border border-zinc-900 rounded-sm">
+                    <div class="flex items-start space-x-2">
+                        <input type="checkbox" id="rule_age" required class="mt-1 accent-[#D4AF37]">
+                        <label for="rule_age" class="text-zinc-400 text-[11px]">I certify that I am 18 years of age or older, and all provided data matches my legal credentials.</label>
+                    </div>
+                    <div class="flex items-start space-x-2">
+                        <input type="checkbox" id="rule_terms" required class="mt-1 accent-[#D4AF37]">
+                        <label for="rule_terms" class="text-zinc-400 text-[11px]">I accept the premium terms, private non-disclosure criteria, and security tracking architecture policies of Roy's World.</label>
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full py-4 bg-gradient-to-r from-[#AA7C11] via-[#D4AF37] to-[#F3E5AB] text-black font-bold uppercase tracking-widest transition duration-300 rounded-sm">
+                    Proceed to Registration Payment
+                </button>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- PAGE 4: SECURE PAYMENT GATEWAY PORTAL -->
+    <div id="payment-page" class="page-view hidden max-w-xl mx-auto px-6 py-12">
+        <div class="glass-card p-8 border border-zinc-800 rounded-sm space-y-6">
+            <div class="text-center border-b border-zinc-900 pb-4">
+                <i class="fa-solid fa-shield-halved text-2xl text-[#D4AF37] mb-2"></i>
+                <h2 class="serif-title text-xl text-white">Sovereign Settlement Gateway</h2>
+                <p class="text-zinc-400 text-xs">Finalizing registration parameters for <span id="pay-tier-name" class="text-[#D4AF37] font-semibold">---</span> tier</p>
+            </div>
+
+            <!-- Invoice Overview Panel -->
+            <div class="bg-black p-4 border border-zinc-900 rounded-sm flex justify-between items-center text-xs">
+                <div>
+                    <p class="text-zinc-500 uppercase text-[9px] tracking-wider">Required Processing Amount</p>
+                    <p class="text-zinc-300">Registration Access Verification Pass</p>
+                </div>
+                <div class="text-right">
+                    <span class="serif-title text-2xl font-bold text-white" id="pay-tier-price">$0.00</span>
+                </div>
+            </div>
+
+            <!-- Selection Matrix -->
+            <div class="space-y-2">
+                <label class="block text-zinc-400 text-[10px] uppercase tracking-wider">Select Encrypted Payment Track</label>
+                <div class="grid grid-cols-2 gap-4">
+                    <button onclick="togglePaymentTrack('card')" id="btn-pay-card" class="p-4 border border-[#D4AF37] bg-zinc-900 text-white rounded-sm font-semibold flex items-center justify-center space-x-2 text-xs">
+                        <i class="fa-solid fa-credit-card text-[#D4AF37]"></i>
+                        <span>Stripe / Card</span>
+                    </button>
+                    <button onclick="togglePaymentTrack('crypto')" id="btn-pay-crypto" class="p-4 border border-zinc-800 bg-black text-zinc-400 rounded-sm font-semibold flex items-center justify-center space-x-2 text-xs">
+                        <i class="fa-brands fa-bitcoin text-amber-500"></i>
+                        <span>Cryptocurrency</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- METHOD A: STRIPE CARD INTERFACE -->
+            <div id="track-card-panel" class="space-y-4 bg-zinc-950 p-4 border border-zinc-900 rounded-sm">
+                <p class="text-[10px] text-zinc-500 uppercase tracking-widest"><i class="fa-brands fa-stripe text-indigo-400 mr-1"></i> Stripe-Ready Architecture Mode</p>
+                <div class="space-y-3 text-xs">
+                    <div>
+                        <label class="block text-zinc-400 mb-1 text-[10px] uppercase">Cardholder Name</label>
+                        <input type="text" placeholder="John Doe" class="w-full bg-[#050505] border border-zinc-800 p-2.5 rounded-sm text-white focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-zinc-400 mb-1 text-[10px] uppercase">Card Number</label>
+                        <div class="relative">
+                            <input type="text" placeholder="4242 •••• •••• 4242" class="w-full bg-[#050505] border border-zinc-800 p-2.5 pl-10 rounded-sm text-white focus:outline-none">
+                            <i class="fa-solid fa-credit-card absolute left-3 top-3.5 text-zinc-600"></i>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-zinc-400 mb-1 text-[10px] uppercase">Expiry</label>
+                            <input type="text" placeholder="MM / YY" class="w-full bg-[#050505] border border-zinc-800 p-2.5 rounded-sm text-white focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-zinc-400 mb-1 text-[10px] uppercase">CVC</label>
+                            <input type="text" placeholder="•••" class="w-full bg-[#050505] border border-zinc-800 p-2.5 rounded-sm text-white focus:outline-none">
+                        </div>
+                    </div>
+                </div>
+                <button onclick="executeSimulatedPayment('Stripe Credit/Debit Card', 'Paid Securely via Client Stripe Intent Token API')" class="w-full py-3 bg-[#D4AF37] text-black uppercase font-bold tracking-wider text-xs hover:opacity-90 transition">
+                    Authorize Fee Submission
+                </button>
+            </div>
+
+            <!-- METHOD B: CRYPTO INTERFACE (DYNAMIC CONFIG DRIVEN) -->
+            <div id="track-crypto-panel" class="hidden space-y-4 bg-zinc-950 p-4 border border-zinc-900 rounded-sm text-xs">
+                <div>
+                    <label class="block text-zinc-400 mb-1 text-[10px] uppercase">Select Asset</label>
+                    <select id="crypto-asset-selector" onchange="renderActiveCryptoWallet()" class="w-full bg-[#050505] border border-zinc-800 p-2.5 rounded-sm text-white focus:outline-none"></select>
+                </div>
+
+                <div class="bg-black p-4 border border-zinc-900 rounded-sm text-center space-y-3">
+                    <p class="text-zinc-500 text-[10px] uppercase tracking-wider">Transfer Funds to Sovereign Destination Address</p>
+                    
+                    <!-- Real Mock-Up QR Code Frame using Premium Vector Design fallback -->
+                    <div class="w-32 h-32 bg-white mx-auto p-2 rounded-sm flex items-center justify-center relative">
+                        <i class="fa-solid fa-qrcode text-zinc-900 text-7xl"></i>
+                        <div class="absolute inset-0 border-2 border-dashed border-[#D4AF37] m-1 pointer-events-none"></div>
+                    </div>
+
+                    <div class="bg-[#050505] p-2 border border-zinc-800 rounded-sm break-all select-all font-mono text-[11px] text-zinc-300 relative group cursor-pointer" onclick="navigator.clipboard.writeText(document.getElementById('crypto-wallet-text-string').innerText); alert('Address copied to clipboard!');">
+                        <span id="crypto-wallet-text-string">---</span>
+                        <i class="fa-solid fa-copy absolute right-2 top-2 text-zinc-600 group-hover:text-[#D4AF37]"></i>
+                    </div>
+                </div>
+
+                <!-- Proof Submission Architecture Requirement -->
+                <div class="bg-black p-3 border border-zinc-900 rounded-sm">
+                    <label class="block text-zinc-400 mb-2 uppercase text-[9px]">Upload Transaction Screenshot / Proof of payment</label>
+                    <input type="file" id="crypto_proof_file" accept="image/*" onchange="processFileToBase64('payment_proof')" class="w-full text-zinc-500 text-[10px] file:mr-2 file:py-1 file:px-2 file:border file:border-zinc-800 file:bg-zinc-900 file:text-zinc-300">
+                    <input type="hidden" id="app_b64_payment_proof">
+                </div>
+
+                <button onclick="executeSimulatedPayment('Cryptocurrency Protocol Asset', 'Pending Proof Verification')" class="w-full py-3 bg-amber-500 text-black uppercase font-bold tracking-wider text-xs hover:opacity-90 transition">
+                    Submit Crypto Payment Receipt
+                </button>
+            </div>
+
+            <!-- Dynamic Notification Notice Info -->
+            <div class="text-[10px] text-zinc-500 text-center flex items-center justify-center space-x-1">
+                <i class="fa-solid fa-circle-info"></i>
+                <span>Your application stays protected under temporary ledger caching until payment verification confirms.</span>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- PAGE 5: POST-PAYMENT/SUCCESS LANDING PAGE -->
+    <div id="success-page" class="page-view hidden max-w-xl mx-auto px-6 py-12 text-center">
+        <div class="glass-card p-10 border border-[#D4AF37] rounded-sm space-y-6">
+            <div class="w-16 h-16 border border-[#D4AF37] rounded-full flex items-center justify-center mx-auto bg-zinc-950 shadow-[0_0_15px_rgba(212,175,55,0.2)]">
+                <i class="fa-solid fa-hourglass-half text-xl text-[#D4AF37] animate-pulse"></i>
+            </div>
+            <div class="space-y-2">
+                <span class="text-[10px] uppercase tracking-[0.3em] text-[#D4AF37] font-semibold block">Application Locked & Secured</span>
+                <h2 class="serif-title text-2xl text-white font-medium">Pending Verification</h2>
+                <p class="text-zinc-400 text-xs max-w-md mx-auto leading-relaxed">
+                    Thank you. Your registration payment confirmation data along with identity files have been successfully compiled and pushed to the executive supervisor layer.
+                </p>
+            </div>
+            <div class="p-4 bg-black border border-zinc-900 rounded-sm text-left space-y-2 text-xs">
+                <div class="flex justify-between text-[11px]"><span class="text-zinc-500">Processing ID:</span><span class="text-zinc-300 font-mono" id="success-proc-id">RW-7392</span></div>
+                <div class="flex justify-between text-[11px]"><span class="text-zinc-500">Security State:</span><span class="text-amber-400">Awaiting Admin Overview</span></div>
+                <div class="flex justify-between text-[11px]"><span class="text-zinc-500">System Notification Email:</span><span class="text-zinc-400" id="success-admin-email-notify">---</span></div>
+            </div>
+            <div>
+                <button onclick="showPage('homepage')" class="w-full py-3 bg-zinc-900 border border-zinc-800 text-zinc-300 uppercase tracking-widest text-[10px] hover:text-white transition">
+                    Return to Lobby Gateway
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- PAGE 6: ADMIN PORTAL - SYSTEM LOGIN -->
+    <div id="admin-login-page" class="page-view hidden max-w-sm mx-auto px-6 py-20">
+        <div class="glass-card p-8 border border-zinc-800 rounded-sm space-y-6">
+            <div class="text-center">
+                <i class="fa-solid fa-shield text-2xl text-[#D4AF37] mb-2"></i>
+                <h2 class="serif-title text-xl text-white">Executive Login Pass</h2>
+                <p class="text-zinc-500 text-xs uppercase tracking-widest">Roy's World Dashboard Access</p>
+            </div>
+            <div class="space-y-4 text-xs">
+                <div>
+                    <label class="block text-zinc-400 mb-1 text-[10px] uppercase">Access Password</label>
+                    <input type="password" id="admin_password_field" placeholder="••••••••" class="w-full bg-[#050505] border border-zinc-800 p-3 rounded-sm text-white focus:outline-none focus:border-[#D4AF37]">
+                </div>
+                <button onclick="validateAdminLogin()" class="w-full py-3 bg-gradient-to-r from-[#AA7C11] to-[#D4AF37] text-black font-bold uppercase tracking-widest transition duration-300">
+                    Verify Access Credentials
+                </button>
+                <div class="text-[10px] text-zinc-600 text-center">
+                    <p><i class="fa-solid fa-circle-exclamation mr-1"></i> Mobile Deployment Keynote</p>
+                    <p class="mt-1 font-mono">Default bypass passcode is: <span class="text-[#D4AF37]">admin123</span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- PAGE 7: MASTER SECURE ADMIN DASHBOARD -->
+    <div id="admin-dashboard-page" class="page-view hidden max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+        
+        <!-- Dashboard Top Header Layout -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-[#0D0D0D] p-6 border border-zinc-900 rounded-sm gap-4">
+            <div>
+                <div class="flex items-center space-x-2">
+                    <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                    <h1 class="serif-title text-xl text-white font-semibold">Roy's World Secure Administration Console</h1>
+                </div>
+                <p class="text-zinc-500 text-xs">Manage incoming high-net-worth applicants, crypto wallets, and live notifications metrics on your phone.</p>
+            </div>
+            <div class="flex items-center space-x-3 w-full sm:w-auto justify-end">
+                <button onclick="showPage('homepage')" class="px-3 py-1.5 border border-zinc-800 text-zinc-400 text-xs hover:text-white transition uppercase tracking-wider text-[10px]">
+                    Exit Panel
+                </button>
+            </div>
+        </div>
+
+        <!-- System Controls Tab Block Layout -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- CONTROLS COLUMN (LEFT) -->
+            <div class="lg:col-span-1 space-y-6">
+                <!-- System Configuration Engine Panel -->
+                <div class="bg-[#0D0D0D] border border-zinc-900 p-5 rounded-sm space-y-4 text-xs">
+                    <h3 class="text-xs uppercase tracking-wider text-[#D4AF37] font-semibold border-b border-zinc-800 pb-2">
+                        <i class="fa-solid fa-sliders mr-1"></i> Core Notification Node
+                    </h3>
+                    <div>
+                        <label class="block text-zinc-400 mb-1 text-[10px] uppercase">Administrator Target Email</label>
+                        <input type="email" id="cfg_admin_email" class="w-full bg-[#050505] border border-zinc-800 p-2 rounded-sm text-white focus:outline-none focus:border-[#D4AF37]">
+                    </div>
+                    <div>
+                        <label class="block text-zinc-400 mb-1 text-[10px] uppercase">Webhook Notification Endpoint URL</label>
+                        <input type="url" id="cfg_webhook" placeholder="Discord or Make.com Webhook URL" class="w-full bg-[#050505] border border-zinc-800 p-2 rounded-sm text-white focus:outline-none focus:border-[#D4AF37]">
+                    </div>
+                    <button onclick="saveAdminSettings()" class="w-full py-2 bg-zinc-800 hover:bg-[#D4AF37] hover:text-black font-semibold uppercase tracking-wider text-[10px] transition text-white">
+                        Commit Configuration Update
+                    </button>
+                </div>
+
+                <!-- Crypto Wallet Settlement Destination Asset Manager Panel -->
+                <div class="bg-[#0D0D0D] border border-zinc-900 p-5 rounded-sm space-y-4 text-xs">
+                    <h3 class="text-xs uppercase tracking-wider text-amber-500 font-semibold border-b border-zinc-800 pb-2">
+                        <i class="fa-brands fa-bitcoin mr-1"></i> Crypto Destination Address Infrastructure
+                    </h3>
+                    <div id="admin-wallet-manager-list" class="space-y-3">
+                        <!-- Filled Dynamically -->
+                    </div>
+                    <button onclick="saveAdminWallets()" class="w-full py-2 bg-amber-500 text-black font-bold uppercase tracking-wider text-[10px] transition">
+                        Update Wallet Registries
+                    </button>
+                </div>
+            </div>
+
+            <!-- APPLICANT MATRIX MANAGEMENT DISPLAY GRID (RIGHT) -->
+            <div class="lg:col-span-2 space-y-4">
+                <div class="bg-[#0D0D0D] border border-zinc-900 p-4 rounded-sm flex flex-col sm:flex-row gap-2 justify-between items-center">
+                    <h3 class="text-xs uppercase tracking-wider text-white font-semibold">
+                        Incoming Security Clearance Applications (<span id="admin-app-count">0</span>)
+                    </h3>
+                    <div class="flex space-x-2 w-full sm:w-auto">
+                        <input type="text" id="admin-search-field" oninput="renderAdminApplications()" placeholder="Filter profiles..." class="bg-[#050505] border border-zinc-800 text-xs px-3 py-1.5 rounded-sm text-white w-full sm:w-48 focus:outline-none focus:border-[#D4AF37]">
+                    </div>
+                </div>
+
+                <!-- Applications Target List -->
+                <div id="admin-applications-container" class="space-y-4">
+                    <!-- Dynamic Generation Grid Area -->
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+
+    <!-- APP CORE CONTROLLER ROUTING LOGIC & PERSISTENCE DRIVERS -->
+    <script>
+        // Simple View Router Matrix
+        function showPage(pageId) {
+            document.querySelectorAll('.page-view').forEach(p => p.classList.add('hidden'));
+            document.getElementById(pageId).classList.remove('hidden');
+            window.scrollTo(0,0);
+
+            // Conditional view hydration
+            if (pageId === 'admin-dashboard-page') {
+                hydrateAdminPanel();
+            }
+            if (pageId === 'success-page') {
+                document.getElementById('success-admin-email-notify').innerText = localStorage.getItem('roys_world_admin_email');
+            }
+        }
+
+        // Package Selection Event Hook
+        function selectMembership(tierName, fee) {
+            currentPackage = { name: tierName, price: fee };
+            document.getElementById('display-selected-package').innerText = `${tierName} (Entry Processing Fee: $${fee})`;
+            showPage('application-page');
+        }
+
+        // Image Base64 Capture Engine for pure standalone single file compatibility
+        function processFileToBase64(type) {
+            let fileInput;
+            let hiddenTarget;
+            if (type === 'selfie') { fileInput = document.getElementById('app_file_selfie'); hiddenTarget = document.getElementById('app_b64_selfie'); }
+            if (type === 'idcard') { fileInput = document.getElementById('app_file_id'); hiddenTarget = document.getElementById('app_b64_idcard'); }
+            if (type === 'payment_proof') { fileInput = document.getElementById('crypto_proof_file'); hiddenTarget = document.getElementById('app_b64_payment_proof'); }
+
+            const file = fileInput.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    hiddenTarget.value = e.target.result;
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // Form Submit Management Pipeline
+        function handleApplicationSubmit(event) {
+            event.preventDefault();
+            
+            // Build temporary application structure node
+            activeApplicationId = 'RW-' + Math.floor(1000 + Math.random() * 9000);
+            const appPayload = {
+                id: activeApplicationId,
+                timestamp: new Date().toLocaleString(),
+                package: currentPackage ? currentPackage.name : 'Silver',
+                fee: currentPackage ? currentPackage.price : 10,
+                firstname: document.getElementById('app_firstname').value,
+                age: document.getElementById('app_age').value,
+                location: document.getElementById('app_location').value,
+                occupation: document.getElementById('app_occupation').value,
+                email: document.getElementById('app_email').value,
+                phone: document.getElementById('app_phone').value,
+                relationship: document.getElementById('app_relationship').value,
+                social: document.getElementById('app_social').value,
+                reason: document.getElementById('app_reason').value,
+                communication: document.getElementById('app_communication').value,
+                honesty: document.getElementById('app_honesty').value,
+                selfie: document.getElementById('app_b64_selfie').value || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+                idcard: document.getElementById('app_b64_idcard').value || 'https://images.unsplash.com/photo-1554774853-aae0a22c8aa4?auto=format&fit=crop&w=300&q=80',
+                payment_status: 'Awaiting Payment',
+                payment_method: 'None Selected',
+                payment_details: '',
+                payment_proof: '',
+                verification_status: 'Pending Verification',
+                favorite: false
+            };
+
+            // Commit application block payload to Local Database Layer
+            let currentApps = JSON.parse(localStorage.getItem('roys_world_applications'));
+            currentApps.push(appPayload);
+            localStorage.setItem('roys_world_applications', JSON.stringify(currentApps));
+
+            // Set Up Payment Portal Labels
+            document.getElementById('pay-tier-name').innerText = appPayload.package;
+            document.getElementById('pay-tier-price').innerText = `$${appPayload.fee}.00`;
+            
+            // Fire Admin Notification Hook Node
+            sendSystemNotification(
+                "New Application Draft Created", 
+                `Applicant ${appPayload.firstname} (${appPayload.email}) created profile for ${appPayload.package}. Advancing to payment step.`,
+                { "ID": appPayload.id, "Tier": appPayload.package, "Location": appPayload.location }
+            );
+
+            // Route View to Payment Gateway
+            togglePaymentTrack('card'); 
+            showPage('payment-page');
+        }
+
+        // Toggle Payment Track Panels Layout
+        function togglePaymentTrack(track) {
+            const btnCard = document.getElementById('btn-pay-card');
+            const btnCrypto = document.getElementById('btn-pay-crypto');
+            const panelCard = document.getElementById('track-card-panel');
+            const panelCrypto = document.getElementById('track-crypto-panel');
+
+            if (track === 'card') {
+                btnCard.className = "p-4 border border-[#D4AF37] bg-zinc-900 text-white rounded-sm font-semibold flex items-center justify-center space-x-2 text-xs";
+                btnCrypto.className = "p-4 border border-zinc-800 bg-black text-zinc-400 rounded-sm font-semibold flex items-center justify-center space-x-2 text-xs";
+                panelCard.classList.remove('hidden');
+                panelCrypto.classList.add('hidden');
+            } else {
+                btnCrypto.className = "p-4 border border-amber-500 bg-zinc-900 text-white rounded-sm font-semibold flex items-center justify-center space-x-2 text-xs";
+                btnCard.className = "p-4 border border-zinc-800 bg-black text-zinc-400 rounded-sm font-semibold flex items-center justify-center space-x-2 text-xs";
+                panelCrypto.classList.remove('hidden');
+                panelCard.classList.add('hidden');
+                renderActiveCryptoWallet();
+            }
+        }
+
+        // Hydrate Crypto Options from Managed Database State Variables
+        function renderActiveCryptoWallet() {
+            const selector = document.getElementById('crypto-asset-selector');
+            const wallets = JSON.parse(localStorage.getItem('roys_world_wallets')).filter(w => w.enabled);
+            
+            if (selector.options.length === 0) {
+                selector.innerHTML = wallets.map(w => `<option value="${w.id}">${w.name}</option>`).join('');
+            }
+
+            const currentSelectedAsset = selector.value;
+            const targetWallet = wallets.find(w => w.id === currentSelectedAsset);
+            if (targetWallet) {
+                document.getElementById('crypto-wallet-text-string').innerText = targetWallet.address;
+            }
+        }
+
+        // Execute Simulated Payment Hook Execution
+        function executeSimulatedPayment(methodName, detailText) {
+            let currentApps = JSON.parse(localStorage.getItem('roys_world_applications'));
+            let targetAppIndex = currentApps.findIndex(a => a.id === activeApplicationId);
+
+            if (targetAppIndex !== -1) {
+                currentApps[targetAppIndex].payment_status = (methodName.includes('Crypto')) ? 'Pending Manual Proof Verification' : 'Paid Confirmed';
+                currentApps[targetAppIndex].payment_method = methodName;
+                currentApps[targetAppIndex].payment_details = detailText;
+                currentApps[targetAppIndex].payment_proof = document.getElementById('app_b64_payment_proof').value || '';
+                
+                localStorage.setItem('roys_world_applications', JSON.stringify(currentApps));
+
+                sendSystemNotification(
+                    "Registration Fee Intent Submitted",
+                    `Applicant ID ${activeApplicationId} processed transaction using tracking system: ${methodName}. Detail parameters signed.`,
+                    { "ID": activeApplicationId, "Method": methodName, "Status": currentApps[targetAppIndex].payment_status }
+                );
+            }
+
+            document.getElementById('success-proc-id').innerText = activeApplicationId || 'RW-7401';
+            showPage('success-page');
+        }
+
+        // Admin Auth Credentials Guard Logic Bypass
+        function validateAdminLogin() {
+            const pass = document.getElementById('admin_password_field').value;
+            if (pass === 'admin123') {
+                showPage('admin-dashboard-page');
+            } else {
+                alert('Access Denied. Secure Signature Signature Does Not Match Firewall Matrix.');
+            }
+        }
+
+        // Hydrate Admin Configuration Elements Data Elements
+        function hydrateAdminPanel() {
+            document.getElementById('cfg_admin_email').value = localStorage.getItem('roys_world_admin_email');
+            document.getElementById('cfg_webhook').value = localStorage.getItem('roys_world_webhook');
+
+            // Render Dynamic Wallet configuration sub elements list items
+            const wallets = JSON.parse(localStorage.getItem('roys_world_wallets'));
+            const walletContainer = document.getElementById('admin-wallet-manager-list');
+            walletContainer.innerHTML = wallets.map((w, idx) => `
+                <div class="bg-black p-3 border border-zinc-900 rounded-sm space-y-2">
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold text-zinc-300 uppercase text-[10px]">${w.name}</span>
+                        <label class="inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="wallet_chk_${idx}" ${w.enabled ? 'checked' : ''} class="accent-amber-500">
+                            <span class="ml-1 text-[9px] text-zinc-500 uppercase">Active</span>
+                        </label>
+                    </div>
+                    <input type="text" id="wallet_addr_${idx}" value="${w.address}" class="w-full bg-[#050505] border border-zinc-800 p-1.5 text-[10px] font-mono rounded-sm text-zinc-300">
+                </div>
+            `).join('');
+
+            renderAdminApplications();
+        }
+
+        // Save Admin Profile Configuration Changes Parameters
+        function saveAdminSettings() {
+            localStorage.setItem('roys_world_admin_email', document.getElementById('cfg_admin_email').value);
+            localStorage.setItem('roys_world_webhook', document.getElementById('cfg_webhook').value);
+            alert('Core System Security variables successfully synced to dynamic cache registry.');
+        }
+
+        // Save Crypto Infrastructure Overwrites 
+        function saveAdminWallets() {
+            let wallets = JSON.parse(localStorage.getItem('roys_world_wallets'));
+            wallets.forEach((w, idx) => {
+                w.enabled = document.getElementById(`wallet_chk_${idx}`).checked;
+                w.address = document.getElementById(`wallet_addr_${idx}`).value;
+            });
+            localStorage.setItem('roys_world_wallets', JSON.stringify(wallets));
+            document.getElementById('crypto-asset-selector').innerHTML = ''; // reset cached payments selections
+            alert('Crypto infrastructure routing blocks successfully locked.');
+        }
+
+        // Admin Profiles Screening Subsystem Operations Engine
+        function renderAdminApplications() {
+            const container = document.getElementById('admin-applications-container');
+            const searchVal = document.getElementById('admin-search-field').value.toLowerCase();
+            const apps = JSON.parse(localStorage.getItem('roys_world_applications')).reverse();
+            
+            const filtered = apps.filter(a => 
+                a.firstname.toLowerCase().includes(searchVal) || 
+                a.email.toLowerCase().includes(searchVal) || 
+                a.package.toLowerCase().includes(searchVal) ||
+                a.id.toLowerCase().includes(searchVal)
+            );
+
+            document.getElementById('admin-app-count').innerText = filtered.length;
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="text-zinc-600 text-xs italic p-8 text-center bg-[#0D0D0D] border border-zinc-900">No applicant nodes matching requested identity metrics found.</div>`;
+                return;
+            }
+
+            container.innerHTML = filtered.map(a => `
+                <div class="bg-[#0D0D0D] border ${a.verification_status === 'Approved' ? 'border-emerald-900' : a.verification_status === 'Rejected' ? 'border-rose-900' : 'border-zinc-800'} p-5 rounded-sm space-y-4">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-zinc-900 pb-3 gap-2">
+                        <div>
+                            <div class="flex items-center space-x-2">
+                                <span class="text-xs font-mono font-bold text-[#D4AF37]">${a.id}</span>
+                                <h4 class="serif-title text-sm text-white font-semibold">${a.firstname} (Age: ${a.age})</h4>
+                                ${a.favorite ? '<i class="fa-solid fa-star text-amber-400 text-[10px]"></i>' : ''}
+                            </div>
+                            <p class="text-[10px] text-zinc-500">${a.timestamp} — Location: ${a.location} — Prof: ${a.occupation}</p>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-[9px] px-2 py-0.5 rounded-sm uppercase tracking-wider font-bold ${a.verification_status === 'Approved' ? 'bg-emerald-950 text-emerald-400' : a.verification_status === 'Rejected' ? 'bg-rose-950 text-rose-400' : 'bg-amber-950 text-amber-400'}">${a.verification_status}</span>
+                            <span class="text-[9px] px-2 py-0.5 bg-zinc-900 text-zinc-400 rounded-sm uppercase">${a.package}</span>
+                        </div>
+                    </div>
+
+                    <!-- Details Matrix Block -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-[11px]">
+                        <div class="space-y-1.5">
+                            <p><span class="text-zinc-500 uppercase text-[9px] mr-1">Contact:</span> <a href="mailto:${a.email}" class="text-blue-400 underline">${a.email}</a> | ${a.phone}</p>
+                            <p><span class="text-zinc-500 uppercase text-[9px] mr-1">Status/Social:</span> ${a.relationship} | <span class="text-zinc-400 font-mono">${a.social}</span></p>
+                            <p><span class="text-zinc-500 uppercase text-[9px] mr-1">Preferred Comms:</span> ${a.communication}</p>
+                            <p class="bg-black p-2 border border-zinc-900 text-zinc-400 italic rounded-sm">"Why Join: ${a.reason}"</p>
+                        </div>
+                        <div class="space-y-2">
+                            <p><span class="text-zinc-500 uppercase text-[9px] mr-1">Payment Track:</span> <span class="text-zinc-300 font-bold">${a.payment_method}</span></p>
+                            <p><span class="text-zinc-500 uppercase text-[9px] mr-1">Payment Log:</span> <span class="text-zinc-400 font-mono text-[10px]">${a.payment_details}</span></p>
+                            
+                            <!-- Document Grid Display Check -->
+                            <div class="flex space-x-2 pt-1">
+                                <div>
+                                    <span class="block text-[8px] uppercase text-zinc-500 text-center mb-0.5">Selfie Profile</span>
+                                    <img src="${a.selfie}" class="w-14 h-14 object-cover border border-zinc-800 rounded-sm cursor-pointer hover:scale-110 transition" onclick="window.open(this.src)">
+                                </div>
+                                <div>
+                                    <span class="block text-[8px] uppercase text-zinc-500 text-center mb-0.5">Govt ID Card</span>
+                                    <img src="${a.idcard}" class="w-14 h-14 object-cover border border-zinc-800 rounded-sm cursor-pointer hover:scale-110 transition" onclick="window.open(this.src)">
+                                </div>
+                                ${a.payment_proof ? `
+                                <div>
+                                    <span class="block text-[8px] uppercase text-amber-500 text-center mb-0.5">Payment Proof</span>
+                                    <img src="${a.payment_proof}" class="w-14 h-14 object-cover border border-amber-900 rounded-sm cursor-pointer hover:scale-110 transition" onclick="window.open(this.src)">
+                                </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Interactive Panel Elements Trigger Options -->
+                    <div class="flex justify-between items-center pt-2 border-t border-zinc-900">
+                        <div class="flex space-x-2">
+                            <button onclick="updateAppStatus('${a.id}', 'Approved')" class="px-3 py-1 bg-emerald-600 text-black text-[10px] uppercase font-bold tracking-wider rounded-sm hover:bg-emerald-500 transition">Approve</button>
+                            <button onclick="updateAppStatus('${a.id}', 'Rejected')" class="px-3 py-1 bg-rose-600 text-white text-[10px] uppercase font-bold tracking-wider rounded-sm hover:bg-rose-500 transition">Reject</button>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button onclick="toggleAppFavorite('${a.id}')" class="text-zinc-500 hover:text-amber-400 px-2 py-1 text-xs">
+                                <i class="${a.favorite ? 'fa-solid text-amber-400' : 'fa-regular'} fa-star"></i>
+                            </button>
+                            <a href="mailto:${a.email}?subject=Roy's%20World%20Membership%20Update&body=Hello%20${a.firstname},%20this%20is%20the%20executive%20concierge..." class="px-2 py-1 bg-zinc-800 text-zinc-300 text-[10px] uppercase rounded-sm hover:bg-zinc-700 transition"><i class="fa-solid fa-envelope mr-1"></i> Contact Request</a>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Change Application Profile State Matrix Options
+        function updateAppStatus(appId, status) {
+            let currentApps = JSON.parse(localStorage.getItem('roys_world_applications'));
+            let idx = currentApps.findIndex(a => a.id === appId);
+            if (idx !== -1) {
+                currentApps[idx].verification_status = status;
+                localStorage.setItem('roys_world_applications', JSON.stringify(currentApps));
+                
+                sendSystemNotification(
+                    `Application Decision: ${status}`,
+                    `Applicant ID ${appId} has been explicitly marked as ${status} by system administrative manual command.`,
+                    { "ID": appId, "Status": status, "Target Email": currentApps[idx].email }
+                );
+                renderAdminApplications();
+            }
+        }
+
+        // Toggle Favorites Flag Setting
+        function toggleAppFavorite(appId) {
+            let currentApps = JSON.parse(localStorage.getItem('roys_world_applications'));
+            let idx = currentApps.findIndex(a => a.id === appId);
+            if (idx !== -1) {
+                currentApps[idx].favorite = !currentApps[idx].favorite;
+                localStorage.setItem('roys_world_applications', JSON.stringify(currentApps));
+                renderAdminApplications();
+            }
+        }
+    </script>
+</body>
+</html>
