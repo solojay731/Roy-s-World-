@@ -1006,14 +1006,12 @@
                 localStorage.setItem('roys_world_applications', JSON.stringify(currentApps));
                 renderAdminApplications();
             }
-        }         // Secret Admin Portal URL Parameters Listener Node
+        }         // Secret Admin Portal URL Parameters Listener Node & Landing Bootstrapper
         window.addEventListener('DOMContentLoaded', () => {
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('portal') === 'executive') {
                 showPage('admin-login-page');
+            } else {
+                showPage('homepage'); // This line lets normal users view the home page safely!
             }
         });
-
-    </script>
-</body>
-</html>
