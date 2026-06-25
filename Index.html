@@ -55,15 +55,14 @@
         // Default Configuration Setup
         if (!localStorage.getItem('roys_world_wallets')) {
             const defaultWallets = [
-                { id: 'btc', name: 'Bitcoin (BTC)', address: '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa', enabled: true },
-                { id: 'eth', name: 'Ethereum (ETH)', address: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e', enabled: true },
-                { id: 'usdt_erc20', name: 'USDT (ERC20)', address: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e', enabled: true },
-                { id: 'usdt_trc20', name: 'USDT (TRC20)', address: 'TXB7GfXW6N3VsbM8qN4b9D7bdfg7asE6fd', enabled: true }
+                { id: 'btc', name: 'Bitcoin (BTC)', address: '17CBMEn1p2MSKAbiXWQugSvhupVgESsbzf', enabled: true },
+                { id: 'usdt_erc20', name: 'USDT (ERC20)', address: '0xa037ac2e6da38923e2cd134ed854a859c97ac0be', enabled: true },
+                { id: 'usdt_trc20', name: 'USDT (TRC20)', address: 'TUPsVwahsXFhFzfV76DNAWS1eXFjQdJk3S', enabled: true }
             ];
             localStorage.setItem('roys_world_wallets', JSON.stringify(defaultWallets));
         }
         if (!localStorage.getItem('roys_world_admin_email')) {
-            localStorage.setItem('roys_world_admin_email', 'admin@roysworldofficial.com');
+            localStorage.setItem('roys_world_admin_email', 'solojay731@gmail.com');
         }
         if (!localStorage.getItem('roys_world_webhook')) {
             localStorage.setItem('roys_world_webhook', '');
@@ -133,7 +132,7 @@
                 <!-- Concierge Greeting Panel -->
                 <div class="glass-card max-w-xl mx-auto p-6 rounded-sm border border-zinc-800">
                     <p class="text-zinc-300 italic text-sm font-light leading-relaxed">
-                        "Hello, I'm Daddy Ben. Sign up using the registration form to apply for membership and join my exclusive circle."
+                        "Hello, I'm Daddy Ben. Sign up using the registration form to apply for membership and join my exclusive circle of sugar babies."
                     </p>
                 </div>
 
@@ -155,7 +154,7 @@
                 <div class="bg-[#0D0D0D] p-8 border border-zinc-900 rounded-sm space-y-4">
                     <div class="text-[#D4AF37] text-2xl"><i class="fa-solid fa-gem"></i></div>
                     <h3 class="serif-title text-lg text-white">Initial Allocations</h3>
-                    <p class="text-zinc-400 text-xs leading-relaxed">Approved members receive immediate executive financial baseline configurations optimized dynamically across private ledger tiers upon verification activation.</p>
+                    <p class="text-zinc-400 text-xs leading-relaxed">Approved members may receive financial assistance based on their membership tier and verification status.</p>
                 </div>
                 <div class="bg-[#0D0D0D] p-8 border border-zinc-900 rounded-sm space-y-4">
                     <div class="text-[#D4AF37] text-2xl"><i class="fa-solid fa-crown"></i></div>
@@ -374,7 +373,7 @@
                     <label class="block text-zinc-400 mb-1 tracking-wider uppercase text-[10px]">Will you remain honest and transparent after approval?</label>
                     <select id="app_honesty" class="w-full bg-[#050505] border border-zinc-800 p-3 rounded-sm text-zinc-300 focus:outline-none focus:border-[#D4AF37]">
                         <option value="Yes, completely">Yes, completely</option>
-                        <option value="I pledge transparent collaboration">I pledge transparent collaboration</option>
+                        <option value="No, i won't">No, i won't</option>
                     </select>
                 </div>
 
@@ -844,7 +843,7 @@
         // Admin Auth Credentials Guard Logic Bypass
         function validateAdminLogin() {
             const pass = document.getElementById('admin_password_field').value;
-            if (pass === 'admin123') {
+            if (pass === 'oluwafolahanmi') {
                 showPage('admin-dashboard-page');
             } else {
                 alert('Access Denied. Secure Signature Signature Does Not Match Firewall Matrix.');
